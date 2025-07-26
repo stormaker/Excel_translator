@@ -95,7 +95,8 @@ def upload_file():
         # Get form data
         api_key = request.form.get('api_key')
         source_lang = request.form.get('source_lang')
-        target_lang = request.form.get('target_lang')
+        target_lang_1 = request.form.get('target_lang_1')
+        target_lang_2 = request.form.get('target_lang_2')
         domain = request.form.get('domain', '')
         session_id = request.form.get('session_id', str(int(time.time())))
         
@@ -138,45 +139,80 @@ def upload_file():
                     source_column = df.iloc[:, 1]  # Second column (index 1)
                 
                 # Initialize OpenAI client
+                # Initialize OpenAI client
                 client = get_openai_client(api_key)
                 
-                # Translate texts
-                translated_texts = []
+                # Translate texts for both target languages
+                translated_texts_1 = []
+                translated_texts_2 = []
                 total_rows = len(source_column)
                 
                 active_sessions[session_id].append({
                     'type': 'info',
-                    'text': f'Starting translation of {total_rows} rows...',
+                    'text': f'Starting dual-language translation of {total_rows} rows...',
+                    'timestamp': datetime.now().strftime('%H:%M:%S')
+                })
+                
+                active_sessions[session_id].append({
+                    'type': 'info',
+                    'text': f'Language 1: {source_lang} → {target_lang_1} (Column C)',
+                    'timestamp': datetime.now().strftime('%H:%M:%S')
+                })
+                
+                active_sessions[session_id].append({
+                    'type': 'info',
+                    'text': f'Language 2: {source_lang} → {target_lang_2} (Column D)',
                     'timestamp': datetime.now().strftime('%H:%M:%S')
                 })
                 
                 for i, text in enumerate(source_column):
                     if pd.isna(text) or str(text).strip() == '':
-                        translated_texts.append('')
+                        translated_texts_1.append('')
+                        translated_texts_2.append('')
                         active_sessions[session_id].append({
                             'type': 'info',
-                            'text': f'Row {i+1}: Empty cell, skipping...',
+                            'text': f'Row {i+1}: Empty cell, skipping both translations...',
                             'timestamp': datetime.now().strftime('%H:%M:%S')
                         })
                     else:
                         active_sessions[session_id].append({
                             'type': 'info',
-                            'text': f'Row {i+1}/{total_rows}: Translating...',
+                            'text': f'Row {i+1}/{total_rows}: Translating to {target_lang_1}...',
                             'timestamp': datetime.now().strftime('%H:%M:%S')
                         })
                         
-                        translated_text = translate_text(client, str(text), source_lang, target_lang, domain, session_id)
-                        translated_texts.append(translated_text)
+                        # First translation
+                        translated_text_1 = translate_text(client, str(text), source_lang, target_lang_1, domain, session_id)
+                        translated_texts_1.append(translated_text_1)
+                        
+                        active_sessions[session_id].append({
+                            'type': 'info',
+                            'text': f'Row {i+1}/{total_rows}: Translating to {target_lang_2}...',
+                            'timestamp': datetime.now().strftime('%H:%M:%S')
+                        })
+                        
+                        # Second translation
+                        translated_text_2 = translate_text(client, str(text), source_lang, target_lang_2, domain, session_id)
+                        translated_texts_2.append(translated_text_2)
                 
-                # Add translations to column C
+                # Add translations to columns C and D
                 if 'C' in df.columns:
-                    df['C'] = translated_texts
+                    df['C'] = translated_texts_1
                 else:
                     # If column C doesn't exist, create it
                     if len(df.columns) >= 3:
-                        df.iloc[:, 2] = translated_texts
+                        df.iloc[:, 2] = translated_texts_1
                     else:
-                        df['C'] = translated_texts
+                        df['C'] = translated_texts_1
+                
+                if 'D' in df.columns:
+                    df['D'] = translated_texts_2
+                else:
+                    # If column D doesn't exist, create it
+                    if len(df.columns) >= 4:
+                        df.iloc[:, 3] = translated_texts_2
+                    else:
+                        df['D'] = translated_texts_2
                 
                 # Save translated file
                 output_filename = f"translated_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
@@ -184,12 +220,14 @@ def upload_file():
                 df.to_excel(output_filepath, index=False)
                 
                 # Add to translation history
+                # Add to translation history
                 history_entry = {
                     'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                     'original_file': filename,
                     'translated_file': output_filename,
                     'source_lang': source_lang,
-                    'target_lang': target_lang,
+                    'target_lang_1': target_lang_1,
+                    'target_lang_2': target_lang_2,
                     'domain': domain,
                     'rows_translated': total_rows
                 }
@@ -198,7 +236,7 @@ def upload_file():
                 # Clean up original file
                 active_sessions[session_id].append({
                     'type': 'success',
-                    'text': f'Translation completed! {total_rows} rows translated. File: {output_filename}',
+                    'text': f'Dual-language translation completed! {total_rows} rows translated to {target_lang_1} and {target_lang_2}. File: {output_filename}',
                     'timestamp': datetime.now().strftime('%H:%M:%S')
                 })
                 

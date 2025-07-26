@@ -1,0 +1,20 @@
+{
+  "path": "d:\\Excel_translator",
+  "desc": "This is a web-based Excel Translator application built with Python Flask. It allows users to upload Excel files, translate content in column B to various languages using AI translation services, and download the translated results. Features include real-time translation progress, Excel content preview, translation history, dark/light themes, and support for multiple languages including Chinese, English, Japanese, Korean, French, German, Spanish, and Russian.",
+  "id": "7c08fd7476324d70846719d54ec41e08",
+  "data": {
+    "spaceKey": "7c08fd7476324d70846719d54ec41e08",
+    "connections": {
+      "webIDE": "https://7c08fd7476324d70846719d54ec41e08.ap-singapore.cloudstudio.club",
+      "preview": "https://7c08fd7476324d70846719d54ec41e08--{port}.ap-singapore.cloudstudio.club",
+      "api": "https://7c08fd7476324d70846719d54ec41e08--api.ap-singapore.cloudstudio.club",
+      "pty": "https://7c08fd7476324d70846719d54ec41e08--pty.ap-singapore.cloudstudio.club"
+    }
+  },
+  "config": {
+    "api": "https://7c08fd7476324d70846719d54ec41e08--api.ap-singapore.cloudstudio.club",
+    "pty": "https://7c08fd7476324d70846719d54ec41e08--pty.ap-singapore.cloudstudio.club",
+    "region": "ap-shanghai",
+    "spaceKey": "7c08fd7476324d70846719d54ec41e08"
+  }
+}

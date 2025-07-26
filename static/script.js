@@ -176,15 +176,6 @@ function clearFile() {
     document.getElementById('file-input').value = '';
 }
 
-function swapLanguages() {
-    const sourceLang = document.getElementById('source-lang');
-    const targetLang = document.getElementById('target-lang');
-    
-    const temp = sourceLang.value;
-    sourceLang.value = targetLang.value;
-    targetLang.value = temp;
-}
-
 function openSettings() {
     document.getElementById('settings-modal').style.display = 'block';
 }
@@ -219,7 +210,10 @@ function saveSettings() {
     
     // Apply settings
     document.getElementById('source-lang').value = settings.defaultSource;
-    document.getElementById('target-lang').value = settings.defaultTarget;
+    document.getElementById('target-lang-1').value = settings.defaultTarget;
+    // Set second target language to a different default
+    const secondLang = settings.defaultTarget === 'English' ? 'Japanese' : 'English';
+    document.getElementById('target-lang-2').value = secondLang;
     applyTheme(settings.theme);
     
     closeSettings();
@@ -235,7 +229,11 @@ function loadSettings() {
         document.getElementById('default-source').value = settings.defaultSource || 'Chinese';
         document.getElementById('default-target').value = settings.defaultTarget || 'English';
         document.getElementById('source-lang').value = settings.defaultSource || 'Chinese';
-        document.getElementById('target-lang').value = settings.defaultTarget || 'English';
+        document.getElementById('target-lang-1').value = settings.defaultTarget || 'English';
+        
+        // Set second target language to a different default
+        const secondLang = (settings.defaultTarget || 'English') === 'English' ? 'Japanese' : 'English';
+        document.getElementById('target-lang-2').value = secondLang;
         
         // Set theme radio button
         const themeRadio = document.querySelector(`input[name="theme"][value="${settings.theme || 'light'}"]`);
@@ -266,7 +264,8 @@ async function translateFile() {
     }
     
     const sourceLang = document.getElementById('source-lang').value;
-    const targetLang = document.getElementById('target-lang').value;
+    const targetLang1 = document.getElementById('target-lang-1').value;
+    const targetLang2 = document.getElementById('target-lang-2').value;
     const domain = document.getElementById('domain').value;
     const sessionId = Date.now().toString();
     
@@ -279,9 +278,10 @@ async function translateFile() {
     clearProcessingInfo();
     
     // Initialize processing info
-    updateProcessingInfo('🚀 Starting translation process...', 'info');
+    updateProcessingInfo('🚀 Starting dual-language translation process...', 'info');
     updateProcessingInfo(`📁 File: ${selectedFile.name}`, 'info');
-    updateProcessingInfo(`🌐 Translation: ${sourceLang} → ${targetLang}`, 'info');
+    updateProcessingInfo(`🌐 Translation 1: ${sourceLang} → ${targetLang1} (Column C)`, 'info');
+    updateProcessingInfo(`🌐 Translation 2: ${sourceLang} → ${targetLang2} (Column D)`, 'info');
     if (domain) {
         updateProcessingInfo(`🎯 Domain: ${domain}`, 'info');
     }
@@ -291,7 +291,8 @@ async function translateFile() {
     formData.append('file', selectedFile);
     formData.append('api_key', apiKey);
     formData.append('source_lang', sourceLang);
-    formData.append('target_lang', targetLang);
+    formData.append('target_lang_1', targetLang1);
+    formData.append('target_lang_2', targetLang2);
     formData.append('domain', domain);
     formData.append('session_id', sessionId);
     
@@ -374,7 +375,20 @@ function startProgressListener(sessionId) {
                 const lastMessage = messages[messages.length - 1];
                 if (lastMessage.type === 'success') {
                     showNotification('Translation completed successfully!', 'success');
-                    loadHistory();
+                    
+                    // Extract filename from success message
+                    const successText = lastMessage.text;
+                    const fileMatch = successText.match(/File: (.+)$/);
+                    if (fileMatch) {
+                        const filename = fileMatch[1];
+                        showDownloadButton(filename);
+                    }
+                    
+                    // Load history to show the new translation
+                    setTimeout(() => {
+                        loadHistory();
+                    }, 1000);
+                    
                     clearFile();
                 } else {
                     showNotification('Translation failed', 'error');
@@ -427,6 +441,22 @@ function clearProcessingInfo() {
     document.getElementById('processing-content').innerHTML = '<p>Preparing translation...</p>';
 }
 
+function showDownloadButton(filename) {
+    const processingContent = document.getElementById('processing-content');
+    const downloadElement = document.createElement('div');
+    downloadElement.className = 'processing-message success';
+    downloadElement.innerHTML = `
+        <div class="message-header">✅ Translation Complete - Download Ready</div>
+        <div class="message-content" style="text-align: center; padding: 15px;">
+            <button class="download-btn" onclick="downloadFile('${filename}')" style="font-size: 1.1rem; padding: 12px 25px;">
+                <i class="fas fa-download"></i> Download Translated File
+            </button>
+        </div>
+    `;
+    processingContent.appendChild(downloadElement);
+    processingContent.scrollTop = processingContent.scrollHeight;
+}
+
 async function loadHistory() {
     try {
         const response = await fetch('/history');
@@ -439,22 +469,27 @@ async function loadHistory() {
             return;
         }
         
-        historyList.innerHTML = history.map(item => `
-            <div class="history-item">
-                <div class="history-item-header">
-                    <span class="history-item-time">${item.timestamp}</span>
-                    <button class="download-btn" onclick="downloadFile('${item.translated_file}')">
-                        <i class="fas fa-download"></i> Download
-                    </button>
+        historyList.innerHTML = history.map(item => {
+            const translation2 = item.target_lang_2 ? 
+                `<br><strong>Translation 2:</strong> ${item.source_lang} → ${item.target_lang_2} (Column D)` : '';
+            
+            return `
+                <div class="history-item">
+                    <div class="history-item-header">
+                        <span class="history-item-time">${item.timestamp}</span>
+                        <button class="download-btn" onclick="downloadFile('${item.translated_file}')">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+                    <div class="history-item-details">
+                        <strong>File:</strong> ${item.original_file}<br>
+                        <strong>Translation:</strong> ${item.source_lang} → ${item.target_lang_1 || item.target_lang} (Column C)${translation2}<br>
+                        <strong>Domain:</strong> ${item.domain || 'General'}<br>
+                        <strong>Rows:</strong> ${item.rows_translated}
+                    </div>
                 </div>
-                <div class="history-item-details">
-                    <strong>File:</strong> ${item.original_file}<br>
-                    <strong>Translation:</strong> ${item.source_lang} → ${item.target_lang}<br>
-                    <strong>Domain:</strong> ${item.domain || 'General'}<br>
-                    <strong>Rows:</strong> ${item.rows_translated}
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     } catch (error) {
         console.error('Failed to load history:', error);
     }
